@@ -52,8 +52,13 @@ bool Socket::Read(void)
 			if ((allocatedSize - curPos) < THRESHOLD)
 			{
 				allocatedSize *= 2;
-				char* newBuf = new char[allocatedSize];
-				memcpy(newBuf, buf, allocatedSize);
+				//from stack overflow https://stackoverflow.com/questions/1401234/differences-between-using-realloc-vs-free-malloc-functions
+				char* newBuf = (char*)realloc(buf, allocatedSize);
+				buf = newBuf;
+				if (newBuf == 0)
+				{
+					free(buf);
+				}
 			}
 		}
 		else if (ret==0)
