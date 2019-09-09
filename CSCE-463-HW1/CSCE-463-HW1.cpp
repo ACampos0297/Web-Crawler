@@ -1,12 +1,46 @@
 /* 
 	Abdul Campos
 	325001471
-	HW1 P1
+	HW1 P2
 	CSCE 463 - 500
 	Fall 2019
 */
 
 #include "pch.h"
+
+// this class is passed to all threads, acts as shared memory
+class Parameters {
+public:
+	HANDLE	mutex;
+	HANDLE	finished;
+	HANDLE	eventQuit;
+};
+
+// this function is where threadA starts
+UINT threadA(LPVOID pParam)
+{
+	Parameters* p = ((Parameters*)pParam);
+
+	// wait for mutex, then print and sleep inside the critical section
+	WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
+	printf("threadA %d started\n", GetCurrentThreadId());		// print inside critical section to avoid screen garbage
+	Sleep(1000);												// sleep 1 second
+	ReleaseMutex(p->mutex);									// release critical section
+
+	// signal that this thread has finished its job
+	ReleaseSemaphore(p->finished, 1, NULL);
+
+	// wait for threadB to allow us to quit
+	WaitForSingleObject(p->eventQuit, INFINITE);
+
+	// print we're about to exit
+	WaitForSingleObject(p->mutex, INFINITE);
+	printf("threadA %d quitting on event\n", GetCurrentThreadId());
+	ReleaseMutex(p->mutex);
+
+	return 0;
+}
+
 
 int main(int argc, char** argv)
 {
@@ -236,12 +270,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	//perform DNS lookup ----------------------------------------
-	printf("\n\tDoing DNS.. ");
 	/*
-	
-
-	
 	// setup the port # and protocol type
 	server.sin_family = AF_INET;
 	if (port != "")
