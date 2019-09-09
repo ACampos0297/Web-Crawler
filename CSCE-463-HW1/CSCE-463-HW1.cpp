@@ -8,7 +8,6 @@
 
 #include "pch.h"
 
-
 int main(int argc, char** argv)
 {
 	//read command line arguments
@@ -27,7 +26,7 @@ int main(int argc, char** argv)
 		}
 		else
 		{
-			// open html file
+			// open text file
 			HANDLE hFile = CreateFile(argv[2], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 				FILE_ATTRIBUTE_NORMAL, NULL);
 			// process errors
@@ -64,97 +63,93 @@ int main(int argc, char** argv)
 			// done with the file
 			CloseHandle(hFile);
 
-			
-			printf("Opened %s with size %i", argv[2], li);
+			printf("Opened %s with size %u", argv[2], li);
 
 			char* pch;
 			pch = strtok(fileBuf, "\n");
 			while (pch != NULL)
 			{
-				printf("%s\n", pch);
+				printf("URL: %s", pch);
+				printf("\n\tParsing URL... ");
+				char* scheme;
+				scheme = strstr(pch, "http://");
+
+				string url, query, path, port, host;
+
+				//retreive url, query, path, port, host from command line argument 
+				if (scheme != NULL)
+				{
+					//remove scheme
+					url = string(pch);
+					pch = pch + 7;
+
+					//remove fragment
+					char* frag = strchr(pch, '#');
+					if (frag != NULL)
+						pch[strlen(pch) - strlen(frag)] = 0;
+
+					//get query
+					char* qry = strchr(pch, '?');
+					if (qry != NULL)
+					{
+						qry++;
+						query = string(qry);
+						pch[strlen(pch) - strlen(qry) - 1] = 0;
+					}
+
+					//get path
+					char* pth = strchr(pch, '/');
+					if (pth != NULL)
+					{
+						path = string(pth);
+						pch[strlen(pch) - strlen(pth)] = 0;
+					}
+					else
+						path = "/";
+
+					//get port
+					char* pt = strchr(pch, ':');
+					if (pt != NULL)
+					{
+						pt++;
+						if (strlen(pt) < 1 || strlen(pt) > 5)
+						{
+							cout << "failed with invalid port\n";
+							return 0;
+						}
+
+						port = string(pt);
+						pch[strlen(pch) - strlen(pt) - 1] = 0;
+					}
+					
+					//get host
+					if (pch != NULL && strlen(pch) > 0)
+						host = string(pch);
+
+					if (host != "")
+						cout << "host " << host;
+					if (port != "")
+						cout << ", port " << port;
+					if (port == "")
+						cout << ", port 80";
+					cout << endl;
+				}
+				else
+				{
+					printf("failed with invalid scheme\n");
+				}
+				
+				if (host != "")
+				{
+					printf("\tChecking host uniqueness...\n");
+
+				}
 				pch = strtok(NULL, "\n");
 			}
 
 		}
 	}
 
-	//handle url
-	/*
-	//handle command line argument -----------------------------------
-	printf("URL: %s \n",argv[1]);
-	printf("\tParsing URL... ");
-
-	char* scheme;
-	scheme = strstr(argv[1], "http://");
-	
-	string url, query, path, port, host;
-	
-	//retreive url, query, path, port, host from command line argument 
-	if (scheme!= NULL)
-	{
-		//remove scheme
-		url = string(argv[1]);
-		argv[1] = argv[1] + 7;
-
-		//remove fragment
-		char* frag = strchr(argv[1], '#');
-		if(frag!=NULL)
-			argv[1][strlen(argv[1]) - strlen(frag)] = 0;
-
-		//get query
-		char* qry = strchr(argv[1], '?');
-		if (qry != NULL)
-		{
-			qry++;
-			query = string(qry);
-			argv[1][strlen(argv[1]) - strlen(qry) -1] = 0;
-		}
-		
-		//get path
-		char* pth = strchr(argv[1], '/');
-		if (pth != NULL)
-		{
-			path = string(pth);
-			argv[1][strlen(argv[1]) - strlen(pth)] = 0;
-		}
-		else
-			path = "/";
-
-		//get port
-		char* pt = strchr(argv[1], ':');
-		if (pt != NULL)
-		{
-			pt++;
-			if (strlen(pt)<1||strlen(pt)>5)
-			{
-				cout << "failed with invalid port\n";
-				return 0;
-			}
-				
-			port = string(pt);
-			argv[1][strlen(argv[1]) - strlen(pt) - 1] = 0;
-		}
-		
-
-		//get host
-		if (argv[1] != NULL && strlen(argv[1]) > 0)
-			host = string(argv[1]);
-
-		if (host != "")
-			cout << "host " << host;
-		if (port != "")
-			cout << ", port " << port;
-		if (path != "")
-			cout << ", path " << path;
-		if (query != "")
-			cout << ", query " << query;
-	}
-	else
-	{
-		printf("failed with invalid scheme\n");
-		return 0;
-	}
-	*/
 	//perform DNS lookup ----------------------------------------
 	printf("\n\tDoing DNS.. ");
 	/*
