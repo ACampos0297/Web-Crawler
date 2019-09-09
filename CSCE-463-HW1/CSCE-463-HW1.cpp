@@ -11,13 +11,81 @@
 
 int main(int argc, char** argv)
 {
+	//read command line arguments
+	if (strcmp(argv[1],"1")!=0)
+	{
+		cout << "Invalid parameter" << endl;
+		return 0;
+	}
+	else
+	{
+		//check input file
+		if (strstr(argv[2],".txt") == NULL)
+		{
+			cout << "Invalid input file" << endl;
+			return 0;
+		}
+		else
+		{
+			// open html file
+			HANDLE hFile = CreateFile(argv[2], GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+				FILE_ATTRIBUTE_NORMAL, NULL);
+			// process errors
+			if (hFile == INVALID_HANDLE_VALUE)
+			{
+				printf("Unable to open file\n");
+				return 0;
+			}
+
+			// get file size
+			LARGE_INTEGER li;
+			BOOL bRet = GetFileSizeEx(hFile, &li);
+			// process errors
+			if (bRet == 0)
+			{
+				printf("GetFileSizeEx error %d\n", GetLastError());
+				return 0;
+			}
+
+			// read file into a buffer
+			int fileSize = (DWORD)li.QuadPart;			// assumes file size is below 2GB; otherwise, an __int64 is needed
+			DWORD bytesRead;
+			// allocate buffer
+			char* fileBuf = new char[fileSize];
+			// read into the buffer
+			bRet = ReadFile(hFile, fileBuf, fileSize, &bytesRead, NULL);
+			// process errors
+			if (bRet == 0 || bytesRead != fileSize)
+			{
+				printf("ReadFile failed with %d\n", GetLastError());
+				return 0;
+			}
+
+			// done with the file
+			CloseHandle(hFile);
+
+			
+			printf("Opened %s with size %i", argv[2], li);
+
+			char* pch;
+			pch = strtok(fileBuf, "\n");
+			while (pch != NULL)
+			{
+				printf("%s\n", pch);
+				pch = strtok(NULL, "\n");
+			}
+
+		}
+	}
+
+	//handle url
+	/*
 	//handle command line argument -----------------------------------
 	printf("URL: %s \n",argv[1]);
 	printf("\tParsing URL... ");
 
-	char str[] = "http://";
 	char* scheme;
-	scheme = strstr(argv[1], str);
+	scheme = strstr(argv[1], "http://");
 	
 	string url, query, path, port, host;
 	
@@ -86,10 +154,10 @@ int main(int argc, char** argv)
 		printf("failed with invalid scheme\n");
 		return 0;
 	}
-
+	*/
 	//perform DNS lookup ----------------------------------------
 	printf("\n\tDoing DNS.. ");
-
+	/*
 	//from sample code
 	WSADATA wsaData;
 
@@ -317,7 +385,7 @@ int main(int argc, char** argv)
 	remove("test.html");
 	delete parser;		// this internally deletes linkBuffer
 	delete fileBuf;
-
+	*/
 	return 0;
 }
 
