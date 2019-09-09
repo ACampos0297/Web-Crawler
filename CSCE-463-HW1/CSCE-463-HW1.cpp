@@ -65,11 +65,25 @@ int main(int argc, char** argv)
 
 			printf("Opened %s with size %u", argv[2], li);
 
+			//from sample code
+			WSADATA wsaData;
+
+			//Initialize WinSock; once per program run
+			WORD wVersionRequested = MAKEWORD(2, 2);
+			if (WSAStartup(wVersionRequested, &wsaData) != 0) {
+				printf("WSAStartup error %d\n", WSAGetLastError());
+				WSACleanup();
+				return 0;
+			}
+
+			unordered_set<string> seenHosts;
+			unordered_set<DWORD> seenIPs;
+
 			char* pch;
 			pch = strtok(fileBuf, "\n");
 			while (pch != NULL)
 			{
-				printf("URL: %s", pch);
+				printf("\n\nURL: %s", pch);
 				printf("\n\tParsing URL... ");
 				char* scheme;
 				scheme = strstr(pch, "http://");
@@ -141,9 +155,81 @@ int main(int argc, char** argv)
 				
 				if (host != "")
 				{
-					printf("\tChecking host uniqueness...\n");
+					//check host uniqueness
+					printf("\tChecking host uniqueness... ");
+					int prevSize = seenHosts.size();
+					seenHosts.insert(host);
+					if (seenHosts.size() > prevSize)
+					{
+						//unique host
+						cout << "passed" << endl;
+						cout << "\tDoing DNS... ";
+						//start clock 
+						clock_t t = clock();
 
+						// open a TCP socket
+						SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+						if (sock == INVALID_SOCKET)
+						{
+							printf("socket() generated error %d\n", WSAGetLastError());
+							WSACleanup();
+							return 0;
+						}
+
+						// structure used in DNS lookups
+						struct hostent* remote;
+						// structure for connecting to server
+						struct sockaddr_in server;
+						// first assume that the string is an IP address
+						DWORD IP = inet_addr(host.c_str());
+
+						int prevIPSize = seenIPs.size();
+
+						if (IP == INADDR_NONE)
+						{
+							// if not a valid IP, then do a DNS lookup
+							if ((remote = gethostbyname(host.c_str())) == NULL)
+							{
+								printf("Invalid string: neither FQDN, nor IP address\n");
+								return 0;
+							}
+							else // take the first IP address and copy into sin_addr
+							{
+								memcpy((char*) & (server.sin_addr), remote->h_addr, remote->h_length);
+								//found IP from DNS lookup, output time and IP
+								printf("done in %.2f ms, found %s", (double)(clock() - t), inet_ntoa(server.sin_addr));
+								string ip = inet_ntoa(server.sin_addr);
+								seenIPs.insert(inet_addr(ip.c_str()));
+							}
+						}
+						else
+						{
+							printf("done in 0 ms, found %s", host.c_str());
+							// if a valid IP, directly drop its binary version into sin_addr
+							server.sin_addr.S_un.S_addr = IP;
+							seenIPs.insert(IP);
+						}
+						cout << "\n\tChecking IP Uniqueness...";
+						if (seenIPs.size() > prevIPSize)
+						{
+							cout << " passed\n";
+							//unique 
+							cout << "\tConnecting on robots...";
+						}
+						else 
+						{
+							//duplicate IP
+							cout << " failed\n";
+						}
+						
+					}
+					else
+					{
+						//duplicate so exit
+						cout << "failed";
+					}
 				}
+				host = port = path = query = "";
 				pch = strtok(NULL, "\n");
 			}
 
@@ -153,61 +239,9 @@ int main(int argc, char** argv)
 	//perform DNS lookup ----------------------------------------
 	printf("\n\tDoing DNS.. ");
 	/*
-	//from sample code
-	WSADATA wsaData;
-
-	//Initialize WinSock; once per program run
-	WORD wVersionRequested = MAKEWORD(2, 2);
-	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
-		printf("WSAStartup error %d\n", WSAGetLastError());
-		WSACleanup();
-		return 0;
-	}
-
-	// open a TCP socket
-	SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock == INVALID_SOCKET)
-	{
-		printf("socket() generated error %d\n", WSAGetLastError());
-		WSACleanup();
-		return 0;
-	}
-
-	// structure used in DNS lookups
-	struct hostent* remote;
-
-	// structure for connecting to server
-	struct sockaddr_in server;
-
-
-
-	// first assume that the string is an IP address
-	DWORD IP = inet_addr(host.c_str());
-
-	//start clock 
-	clock_t t = clock();
 	
-	if (IP == INADDR_NONE)
-	{
-		// if not a valid IP, then do a DNS lookup
-		if ((remote = gethostbyname(host.c_str())) == NULL)
-		{
-			printf("Invalid string: neither FQDN, nor IP address\n");
-			return 0;
-		}
-		else // take the first IP address and copy into sin_addr
-		{
-			memcpy((char*) & (server.sin_addr), remote->h_addr, remote->h_length);
-			//found IP from DNS lookup, output time and IP
-			printf("done in %.2f ms, found %s",(double) (clock()-t) , inet_ntoa(server.sin_addr));
-		}
-	}
-	else
-	{
-		printf("done in 0 ms, found %s", host.c_str());
-		// if a valid IP, directly drop its binary version into sin_addr
-		server.sin_addr.S_un.S_addr = IP;
-	}
+
+	
 	// setup the port # and protocol type
 	server.sin_family = AF_INET;
 	if (port != "")
