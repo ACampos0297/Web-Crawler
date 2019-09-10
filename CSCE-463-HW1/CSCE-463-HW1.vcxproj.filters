@@ -38,8 +38,5 @@
     <ClInclude Include="HTMLParserBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CSCE-463-HW1.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

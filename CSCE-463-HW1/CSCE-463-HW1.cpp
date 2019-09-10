@@ -7,7 +7,6 @@
 */
 
 #include "pch.h"
-#include "CSCE-463-HW1.h"
 
 // this class is passed to all threads, acts as shared memory
 class Parameters {
@@ -15,6 +14,8 @@ public:
 	HANDLE	mutex;
 	HANDLE	finished;
 	HANDLE	eventQuit;
+	Socket* recvSocket;
+	char* request;
 };
 
 // this function is where threadA starts
@@ -24,7 +25,29 @@ UINT threadA(LPVOID pParam)
 
 	// wait for mutex, then print and sleep inside the critical section
 	WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
-	//cout << "From critical section" << endl;
+	//perform read here ---------------------------------------------
+	clock_t t = clock();
+	if (p->recvSocket->Read(ROBOT_SIZE))
+	{
+		printf("done in %.0f ms with %u bytes", (double)(clock() - t), p->recvSocket->bytesReceived());
+		printf("\n\tVerifying header... ");
+		string header;
+
+		string received(p->recvSocket->getBuffer());
+		string status = received.substr(9, 3);
+		cout << "status code " << status;
+
+		if (status[0]=='4')
+		{
+			//robot exists, download page
+			cout << "\n\t\b\b* Connecting on page...";
+			
+		}
+	}
+
+
+	
+
 	ReleaseMutex(p->mutex);									// release critical section
 
 	// signal that this thread has finished its job
@@ -214,17 +237,6 @@ int main(int argc, char** argv)
 					seenHosts.insert(host);
 					if (seenHosts.size() > prevSize)
 					{
-						// thread handles are stored here; they can be used to check status of threads, or kill them
-						HANDLE* handles = new HANDLE[3];
-						Parameters p;
-
-						// create a mutex for accessing critical sections (including printf); initial state = not locked
-						p.mutex = CreateMutex(NULL, 0, NULL);
-						// create a semaphore that counts the number of active threads; initial value = 0, max = 2
-						p.finished = CreateSemaphore(NULL, 0, 1, NULL);
-						// create a quit event; manual reset, initial state = not signaled
-						p.eventQuit = CreateEvent(NULL, true, false, NULL);
-
 						//unique host
 						cout << "passed" << endl;
 						cout << "\tDoing DNS... ";
@@ -272,8 +284,7 @@ int main(int argc, char** argv)
 							//Connect on robots
 							cout << "\tConnecting on robots...";
 							
-							//connectServer("HEAD", 200, "2MB", *);
-							//---------------------------TODO--------------------------------------------------
+							
 							
 							// open a TCP socket
 							SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -301,16 +312,51 @@ int main(int argc, char** argv)
 								else
 								{
 									printf("done in %.0f ms", (double)(clock() - t));
+								
+									// send HTTP requests here
+									printf("\n\tLoading... ");
+
+									char headMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
 									
-									//connected to robots request HEAD
 
+									int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(headMethod) - 4;
+									char* sendBuf = new char[reqBuffLen + 1];
+
+									sprintf(sendBuf, headMethod, path.c_str(), host.c_str());
+									
+									// place request into buf
+									if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
+									{
+										printf("Send error: %d\n", WSAGetLastError());
+									}
+									else
+									{
+										// thread handles are stored here; they can be used to check status of threads, or kill them
+										HANDLE* handles = new HANDLE[1];
+										Parameters p;
+										char getMethod[] = "GET %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+										p.request = new char[reqBuffLen];
+										sprintf(p.request, getMethod, path.c_str(), host.c_str());
+										p.request = sendBuf;
+										p.recvSocket = new Socket(sock);
+										// create a mutex for accessing critical sections (including printf); initial state = not locked
+										p.mutex = CreateMutex(NULL, 0, NULL);
+										// create a semaphore that counts the number of active threads; initial value = 0, max = 2
+										p.finished = CreateSemaphore(NULL, 0, 1, NULL);
+										// create a quit event; manual reset, initial state = not signaled
+										p.eventQuit = CreateEvent(NULL, true, false, NULL);
+
+										t = clock();
+										// structure p is the shared space between the threads
+										handles[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadA, &p, 0, NULL);							
+
+										WaitForSingleObject(handles[0], INFINITE);
+										CloseHandle(handles[0]);
+
+										// close the socket to this server; open again for the next one
+										closesocket(sock);
+									}
 								}
-
-
-								// structure p is the shared space between the threads
-								handles[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadA, &p, 0, NULL);		// start threadA (instance #1) 								
-								WaitForSingleObject(handles[0], INFINITE);
-								CloseHandle(handles[0]);
 							}
 						}
 						else 
@@ -332,6 +378,8 @@ int main(int argc, char** argv)
 
 		}
 	}
+	// call cleanup when done with everything and ready to exit program
+	WSACleanup();
 	return 0;
 }
 

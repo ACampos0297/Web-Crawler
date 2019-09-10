@@ -17,7 +17,7 @@ Socket::Socket(SOCKET sockToRead)
 	curPos = 0;
 }
 
-bool Socket::Read()
+bool Socket::Read(int maxSize)
 {
 	// set timeout to 10 seconds
 	struct timeval tv;
@@ -49,6 +49,11 @@ bool Socket::Read()
 				return true; // normal completion
 			}
 			curPos += bytes; // adjust where the next recv goes
+			if (curPos > maxSize)
+			{
+				cout << "maximum download size reached" << endl;
+				break;
+			}
 			if ((allocatedSize - curPos) < THRESHOLD)
 			{
 				allocatedSize *= 2;

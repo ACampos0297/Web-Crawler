@@ -12,15 +12,17 @@
 #define INITIAL_BUF_SIZE 8000  //8kb
 #define THRESHOLD 8000 //8kb
 
+
 class Socket {
-	SOCKET socket; // socket handle
+	
 	char* buf; // current buffer
 	int allocatedSize; // bytes allocated for buf
 	int curPos; //current position in buffer
 
 public: 
+	SOCKET socket; // socket handle
 	Socket(SOCKET sock);
-	bool Read(void);
+	bool Read(int size);
 	char* getBuffer();
 	int bytesReceived();
 };

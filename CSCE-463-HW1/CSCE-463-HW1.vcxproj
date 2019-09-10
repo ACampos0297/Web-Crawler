@@ -161,7 +161,6 @@
     <ClCompile Include="Socket.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CSCE-463-HW1.h" />
     <ClInclude Include="HTMLParserBase.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Socket.h" />

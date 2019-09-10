@@ -23,6 +23,8 @@
 #ifndef PCH_H
 #define PCH_H
 
+#define ROBOT_SIZE 16000 //16kb for robot
+#define PAGE_SIZE 2000000 //2MB for pages
 // add headers that you want to pre-compile here
 
 #include <stdio.h>
