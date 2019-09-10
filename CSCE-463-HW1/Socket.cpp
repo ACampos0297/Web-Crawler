@@ -17,7 +17,7 @@ Socket::Socket(SOCKET sockToRead)
 	curPos = 0;
 }
 
-bool Socket::Read(void)
+bool Socket::Read()
 {
 	// set timeout to 10 seconds
 	struct timeval tv;
