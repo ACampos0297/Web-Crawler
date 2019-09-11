@@ -298,14 +298,14 @@ if (host != "")
 					printf("done in %.0f ms", (double)(clock() - t));
 								
 					// send HTTP requests here
-					printf("\n\tLoading... ");
+					cout<<"\n\tLoading...";
 
-					char headMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
-					int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(headMethod) - 4;
+					char getMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+					int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(getMethod) - 4;
 					char* sendBuf = new char[reqBuffLen + 1];
-
-					sprintf(sendBuf, headMethod, path.c_str(), host.c_str());
-									
+					sprintf(sendBuf, getMethod, path.c_str(), host.c_str());
+					printf(getMethod, path, host);
+					cout <<endl<< sendBuf << endl;
 					// place request into buf
 					if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
 					{
@@ -325,7 +325,7 @@ if (host != "")
 							string header;
 
 							string received(recvSocket.getBuffer());
-							string status = received.substr(9, 3);
+							string status = received.length()>0?received.substr(9, 3):"200";
 							cout << "status code " << status;
 
 	if (status[0] == '4')
@@ -365,9 +365,9 @@ if (host != "")
 				char getMethod[] = "GET %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
 				int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(getMethod) - 4;
 				char* sendBuf = new char[reqBuffLen + 1];
-
+				
 				sprintf(sendBuf, getMethod, path.c_str(), host.c_str());
-
+				
 				// place request into buf
 				if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
 				{
@@ -399,13 +399,12 @@ if (host != "")
 					closesocket(sock);
 
 					printf("\n\tVerifying header... ");
-					string header;
 
 					string received(p.recvSocket->getBuffer());
-					string status = received.substr(9, 3);
-					cout << "status code " << status;
+					string recstatus = received.substr(9, 3);
+					cout << "status code " << recstatus;
 
-					if (status[0] == '2')
+					if (recstatus[0] == '2')
 					{
 						printf("\t\b\b+ Parsing page... ");
 						received.erase(0, received.find("<html>"));
