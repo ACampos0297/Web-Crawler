@@ -28,6 +28,7 @@ bool Socket::Read(int maxSize)
 	FD_ZERO(&fds);
 	FD_SET(socket, &fds);
 
+	//stop if longer than 10 seconds
 	tv.tv_sec=10;
 	tv.tv_usec=0;
 
@@ -68,7 +69,7 @@ bool Socket::Read(int maxSize)
 		}
 		else if (ret==0)
 		{
-			cout << " connection timed out" << endl;
+			cout << " connection timed out";
 			break;
 		}
 		else

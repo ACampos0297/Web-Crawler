@@ -27,26 +27,10 @@ UINT threadA(LPVOID pParam)
 	WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
 	//perform read here ---------------------------------------------
 	clock_t t = clock();
-	if (p->recvSocket->Read(ROBOT_SIZE))
+	if (p->recvSocket->Read(PAGE_SIZE))
 	{
 		printf("done in %.0f ms with %u bytes", (double)(clock() - t), p->recvSocket->bytesReceived());
-		printf("\n\tVerifying header... ");
-		string header;
-
-		string received(p->recvSocket->getBuffer());
-		string status = received.substr(9, 3);
-		cout << "status code " << status;
-
-		if (status[0]=='4')
-		{
-			//robot exists, download page
-			cout << "\n\t\b\b* Connecting on page...";
-			
-		}
 	}
-
-
-	
 
 	ReleaseMutex(p->mutex);									// release critical section
 
@@ -263,7 +247,7 @@ int main(int argc, char** argv)
 							{
 								memcpy((char*) & (server.sin_addr), remote->h_addr, remote->h_length);
 								//found IP from DNS lookup, output time and IP
-								printf("done in %.2f ms, found %s", (double)(clock() - t), inet_ntoa(server.sin_addr));
+								printf("done in %.0f ms, found %s", (double)(clock() - t), inet_ntoa(server.sin_addr));
 								string ip = inet_ntoa(server.sin_addr);
 								seenIPs.insert(inet_addr(ip.c_str()));
 							}
@@ -317,8 +301,6 @@ int main(int argc, char** argv)
 									printf("\n\tLoading... ");
 
 									char headMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
-									
-
 									int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(headMethod) - 4;
 									char* sendBuf = new char[reqBuffLen + 1];
 
@@ -331,30 +313,108 @@ int main(int argc, char** argv)
 									}
 									else
 									{
-										// thread handles are stored here; they can be used to check status of threads, or kill them
-										HANDLE* handles = new HANDLE[1];
-										Parameters p;
-										char getMethod[] = "GET %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
-										p.request = new char[reqBuffLen];
-										sprintf(p.request, getMethod, path.c_str(), host.c_str());
-										p.request = sendBuf;
-										p.recvSocket = new Socket(sock);
-										// create a mutex for accessing critical sections (including printf); initial state = not locked
-										p.mutex = CreateMutex(NULL, 0, NULL);
-										// create a semaphore that counts the number of active threads; initial value = 0, max = 2
-										p.finished = CreateSemaphore(NULL, 0, 1, NULL);
-										// create a quit event; manual reset, initial state = not signaled
-										p.eventQuit = CreateEvent(NULL, true, false, NULL);
+										Socket recvSocket(sock);
+										clock_t t = clock();
+										if (recvSocket.Read(ROBOT_SIZE))
+										{
+											printf("done in %.0f ms with %u bytes", (double)(clock() - t), recvSocket.bytesReceived());
+											// close the socket to this server; open again for the next one
+											closesocket(sock);
 
-										t = clock();
-										// structure p is the shared space between the threads
-										handles[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadA, &p, 0, NULL);							
+											printf("\n\tVerifying header... ");
+											string header;
 
-										WaitForSingleObject(handles[0], INFINITE);
-										CloseHandle(handles[0]);
+											string received(recvSocket.getBuffer());
+											string status = received.substr(9, 3);
+											cout << "status code " << status;
 
-										// close the socket to this server; open again for the next one
-										closesocket(sock);
+											if (status[0] == '4')
+											{
+												//robot exists, download page
+												cout << "\n\t\b\b* Connecting on page...";
+												// open a TCP socket
+												SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+												if (sock == INVALID_SOCKET)
+												{
+													printf("socket() generated error %d\n", WSAGetLastError());
+												}
+												else
+												{
+													// setup the port # and protocol type
+													server.sin_family = AF_INET;
+													if (port != "")
+													{
+														server.sin_port = htons((unsigned short)stoi(port));
+													}
+													else
+														server.sin_port = htons(80);		// host-to-network flips the byte order
+
+													// connect to the server on port given
+													t = clock();
+													if (connect(sock, (struct sockaddr*) & server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+													{
+														printf("Connection error: %d", WSAGetLastError());
+													}
+													else
+													{
+														printf("done in %.0f ms", (double)(clock() - t));
+
+														// send HTTP requests here
+														printf("\n\tLoading... ");
+
+														char getMethod[] = "GET %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+														int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(getMethod) - 4;
+														char* sendBuf = new char[reqBuffLen + 1];
+
+														sprintf(sendBuf, getMethod, path.c_str(), host.c_str());
+
+														// place request into buf
+														if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
+														{
+															printf("Send error: %d\n", WSAGetLastError());
+														}
+														else
+														{
+															// thread handles are stored here; they can be used to check status of threads, or kill them
+															HANDLE* handles = new HANDLE[1];
+
+															Parameters p;
+															p.recvSocket = new Socket(sock);
+															// create a mutex for accessing critical sections (including printf); initial state = not locked
+															p.mutex = CreateMutex(NULL, 0, NULL);
+															// create a semaphore that counts the number of active threads; initial value = 0, max = 2
+															p.finished = CreateSemaphore(NULL, 0, 1, NULL);
+															// create a quit event; manual reset, initial state = not signaled
+															p.eventQuit = CreateEvent(NULL, true, false, NULL);
+
+															t = clock();
+															// structure p is the shared space between the threads
+															handles[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)threadA, &p, 0, NULL);
+
+
+															WaitForSingleObject(handles[0], INFINITE);
+															CloseHandle(handles[0]);
+
+															// close the socket to this server; open again for the next one
+															closesocket(sock);
+
+															printf("\n\tVerifying header... ");
+															string header;
+
+															string received(p.recvSocket->getBuffer());
+															string status = received.substr(9, 3);
+															cout << "status code " << status;
+
+															if (status[0] == '2')
+															{
+																cout << "\n\t\b\b+ Parsing page";
+																
+															}
+														}
+													}
+												}
+											}
+										}
 									}
 								}
 							}
