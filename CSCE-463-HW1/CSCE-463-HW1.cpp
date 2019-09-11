@@ -298,16 +298,17 @@ if (host != "")
 					printf("done in %.0f ms", (double)(clock() - t));
 								
 					// send HTTP requests here
-					cout<<"\n\tLoading...";
+					printf("\n\tLoading...");
+;
+					path = path.substr(0,path.length()-1);
+					char headMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
+					int headreqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(headMethod);
+					char* sendBuf = new char[headreqBuffLen + 1];
 
-					char getMethod[] = "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n";
-					int reqBuffLen = strlen(host.c_str()) + strlen(path.c_str()) + strlen(getMethod) - 4;
-					char* sendBuf = new char[reqBuffLen + 1];
-					sprintf(sendBuf, getMethod, path.c_str(), host.c_str());
-					printf(getMethod, path, host);
-					cout <<endl<< sendBuf << endl;
+					sprintf(sendBuf, "HEAD %s HTTP/1.0\r\nUser-Agent: accrawler/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path.c_str(), host.c_str());
+					
 					// place request into buf
-					if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
+					if (send(sock, sendBuf, headreqBuffLen, 0) == SOCKET_ERROR)
 					{
 						printf("Send error: %d\n", WSAGetLastError());
 					}
@@ -368,7 +369,6 @@ if (host != "")
 				
 				sprintf(sendBuf, getMethod, path.c_str(), host.c_str());
 				
-				// place request into buf
 				if (send(sock, sendBuf, reqBuffLen, 0) == SOCKET_ERROR)
 				{
 					printf("Send error: %d\n", WSAGetLastError());
