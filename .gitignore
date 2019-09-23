@@ -1,3 +1,4 @@
 #dont track folders
 x64/
+.vs
 CSCE-461-HW1/x64/Debug
