@@ -409,6 +409,7 @@ if (host != "")
 						printf("\t\b\b+ Parsing page... ");
 						received.erase(0, received.find("<html>"));
 						ofstream htmlOut("test.html");
+
 						if (htmlOut.is_open())
 						{
 							htmlOut << received.c_str();
