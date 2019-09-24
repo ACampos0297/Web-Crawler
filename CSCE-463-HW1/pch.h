@@ -34,6 +34,7 @@
 #include <ctime>
 #include <fstream>
 #include <unordered_set>
+#include <queue>
 
 #include "HTMLParserBase.h"
 #include "Socket.h"
