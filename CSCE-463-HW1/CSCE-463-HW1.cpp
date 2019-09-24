@@ -31,6 +31,7 @@ public:
 	int passedHostUniqueness=0;
 	int passedIPUniqueness = 0;
 	int succDNSlook = 0;
+	int passedRobots = 0;
 	clock_t clock;
 };
 
@@ -85,7 +86,7 @@ UINT fileReader(LPVOID pParam)
 		WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
 		p->urls.push(pch);
 		ReleaseSemaphore(p->crawlerSem,1,NULL);
-		ReleaseMutex(p->mutex);
+		ReleaseMutex(p->mutex);							//release critical section
 		pch = strtok(NULL, "\r\n");
 	}
 
@@ -110,13 +111,14 @@ UINT statsThread(LPVOID pParam)
 		int seconds = ((double)(tlast - p->clock)) / CLOCKS_PER_SEC;
 
 		printf(
-			"[%3d] %6d Q %7d E %6d H %6d D %5d I\n",
+			"[%3d] %6d Q %7d E %6d H %6d D %5d I %5d R\n",
 			seconds,
 			p->urls.size(),
 			p->extractedURLs,
 			p->passedHostUniqueness,
 			p->succDNSlook,
-			p->passedIPUniqueness
+			p->passedIPUniqueness,
+			p->passedRobots
 		);
 
 		ReleaseMutex(p->mutex);										// unlock mutex
@@ -152,7 +154,7 @@ UINT crawlerThread(LPVOID pParam)
 		}
 		ReleaseMutex(p->mutex);						// release critical section
 		//crawl here
-
+		
 		//Parse URL first
 		//PARSING
 		char* scheme;
@@ -212,7 +214,7 @@ UINT crawlerThread(LPVOID pParam)
 			if (pch != NULL && strlen(pch) > 0)
 				host = string(pch);
 		}
-
+		/*
 		if (host != "")
 		{
 			WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
@@ -223,7 +225,7 @@ UINT crawlerThread(LPVOID pParam)
 			{
 				//unique host add to count
 				(p->passedHostUniqueness)++;
-				
+
 				//Do DNS
 				// structure used in DNS lookups
 				struct hostent* remote;
@@ -231,7 +233,6 @@ UINT crawlerThread(LPVOID pParam)
 				struct sockaddr_in server;
 				// first assume that the string is an IP address
 				DWORD IP = inet_addr(host.c_str());
-				
 				int prevIPSize = p->seenIPs.size();
 				if (IP == INADDR_NONE)
 				{
@@ -254,16 +255,46 @@ UINT crawlerThread(LPVOID pParam)
 					server.sin_addr.S_un.S_addr = IP;
 					p->seenIPs.insert(IP);
 				}
-				
+
 				if (p->seenIPs.size() > prevIPSize)
 				{
 					(p->passedIPUniqueness)++;
-					//check robots
+					ReleaseMutex(p->mutex);						// release critical section
 
+					// open a TCP socket
+					SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+					if (sock == INVALID_SOCKET)
+					{
+					}
+					else
+					{
+						// setup the port # and protocol type
+						server.sin_family = AF_INET;
+						if (port != "")
+						{
+							server.sin_port = htons((unsigned short)stoi(port));
+						}
+						else
+							server.sin_port = htons(80);		// host-to-network flips the byte order
+
+						if (connect(sock, (struct sockaddr*) & server, sizeof(struct sockaddr_in)) == SOCKET_ERROR)
+						{
+						}
+						else
+						{
+							WaitForSingleObject(p->mutex, INFINITE);					// lock mutex
+							(p->passedRobots)++;
+							ReleaseMutex(p->mutex);						// release critical section
+							
+						}
+					}
 				}
-			}	
-			ReleaseMutex(p->mutex);						// release critical section
+				else
+					ReleaseMutex(p->mutex);						// release critical section
+			}
+			
 		}
+		*/
 	}
 	return 0;
 }
@@ -345,7 +376,6 @@ int main(int argc, char** argv)
 /*
 					
 //Connect on robots
-cout << "\tConnecting on robots...";
 
 // open a TCP socket
 SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
