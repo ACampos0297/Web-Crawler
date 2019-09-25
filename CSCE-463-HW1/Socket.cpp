@@ -41,7 +41,6 @@ bool Socket::Read(int maxSize)
 			int bytes = recv(socket, buf + curPos, allocatedSize- curPos, 0);
 			if (bytes < 0)
 			{
-				cout << " " << WSAGetLastError() << endl;
 				break;
 			}
 			if (bytes == 0)
@@ -52,7 +51,6 @@ bool Socket::Read(int maxSize)
 			curPos += bytes; // adjust where the next recv goes
 			if (curPos > maxSize)
 			{
-				cout << "maximum download size reached" << endl;
 				break;
 			}
 			if ((allocatedSize - curPos) < THRESHOLD)
@@ -69,12 +67,10 @@ bool Socket::Read(int maxSize)
 		}
 		else if (ret==0)
 		{
-			cout << " connection timed out";
 			break;
 		}
 		else
 		{
-			cout << " " << WSAGetLastError()<<endl;
 			break;
 		}
 	}
